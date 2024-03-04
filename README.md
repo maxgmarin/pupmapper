@@ -13,7 +13,6 @@ Pupmapper: A **P**ile**up** **Map**pability Calculato**r**
 > TBD Reference
 --->
 
-
 [TOC]: #
 ## Table of Contents
 - [Motivation](#motivation)
@@ -23,6 +22,7 @@ Pupmapper: A **P**ile**up** **Map**pability Calculato**r**
 - [Basic usage](#basic-usage)
   - [test data set](#analyzing-included-test-data-set)
 - [Full usage](#full-usage)
+- [FAQ](#FAQ)
 
 
 ## Motivation
@@ -51,15 +51,13 @@ pip install pupmapper
 ```
 pupmapper -i kmap.K50E0.bedgraph -o pupmap.K50E0.bedgraph -k 50
 ```
-
-The above command will run `pupmapper` on the input k-mer mappabilities (k= 50 bp, E = 4 mismatches) and output pileup mappability scores. 
-
+The above command will run `pupmapper` on the input k-mer mappabilities (k= 50 bp, E = 0 mismatches) and output pileup mappability scores. 
 
 
 ### Analyzing included test sequence
 
 If you wish to run an `panqc nrc` on a small test sequence, you can run the following commands:
-
+>🚧 Check back soon 🚧
 ```
 cd tests/data
 
@@ -85,5 +83,35 @@ optional arguments:
                         k-mer size (bp) used to generate the input k-mer mappability values
 ....
 ```
+
+
+
+
+## FAQ
+
+### 1) How do I go from my genome of interest to identifying regions with low pileup mappability?
+
+A) Use `genmap` (with your desired parameters) to calculate k-mer mappability for your genome of interest. (Output to .bedgraph)
+B) Use `pupmapper` to calculate pileup mappability from k-mer mappability (output to .bedgraph)
+C) Use `awk` and `bedtools` to identify regions of the genome which have pileup mappability < 1 (or below your desired threshold).
+
+
+### 2) How do I generate the k-mer mappability values that pupmapper needs?
+To calculate pileup mappability with `pupmapper` you must first generate k-mer mappability values with [genmap](https://github.com/cpockrandt/genmap). Refer to [getting started section](https://github.com/cpockrandt/genmap?tab=readme-ov-file#getting-started) of `genmap`'s README for more details.
+
+You can use `genmap` in two steps:
+#### 1) Index your target sequence
+```
+$ ./genmap index -F /path/to/fasta.fasta -I /path/to/index/folder
+```
+
+#### 2) 
+```
+$ ./genmap map -K 30 -E 2 -I /path/to/index/folder -O /path/to/output/folder -t -w -bg
+```
+
+
+
+
 
 
