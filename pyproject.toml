@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pupmap = "pupmapper.__init__:main"
+pupmapper = "pupmapper.__init__:main"
 
 [project.optional-dependencies]
 test = [

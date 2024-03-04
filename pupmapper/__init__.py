@@ -10,7 +10,7 @@ import os
 from ._version import __version__
 
 import pandas as pd
-
+import numpy as np
 
 def _pup_cli(args):
     ## 1) Set input parameters and PATHs ####
@@ -48,7 +48,7 @@ def main():
     
     pup_parser.set_defaults(func=_pup_cli)
 
-    args = parser.parse_args()
+    args = pup_parser.parse_args()
     args.func(args)
 
 
