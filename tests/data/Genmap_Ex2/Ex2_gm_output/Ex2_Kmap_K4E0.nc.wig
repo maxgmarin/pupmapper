@@ -1,0 +1,6 @@
+variableStep chrom=Genmap_example2_18bp span=2
+1 0.5
+variableStep chrom=Genmap_example2_18bp span=11
+3 1
+variableStep chrom=Genmap_example2_18bp span=2
+14 0.5
