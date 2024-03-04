@@ -91,9 +91,9 @@ optional arguments:
 
 ### 1) How do I go from my genome of interest to identifying regions with low pileup mappability?
 
-A) Use `genmap` (with your desired parameters) to calculate k-mer mappability for your genome of interest. (Output to .bedgraph)
-B) Use `pupmapper` to calculate pileup mappability from k-mer mappability (output to .bedgraph)
-C) Use `awk` and `bedtools` to identify regions of the genome which have pileup mappability < 1 (or below your desired threshold).
+- 1.1) Use `genmap` (with your desired parameters) to calculate k-mer mappability for your genome of interest. (Output to .bedgraph)
+- 1.2) Use `pupmapper` to calculate pileup mappability from k-mer mappability (output to .bedgraph)
+- 1.3) Use `awk` and `bedtools` to identify regions of the genome which have pileup mappability < 1 (or below your desired threshold).
 
 
 ### 2) How do I generate the k-mer mappability values that pupmapper needs?
@@ -105,7 +105,7 @@ You can use `genmap` in two steps:
 $ ./genmap index -F /path/to/fasta.fasta -I /path/to/index/folder
 ```
 
-#### 2) 
+#### 2) Calculate k-mer mappability with desired parameters (in this example k = 30 bp and E = up to 2 mismatches)
 ```
 $ ./genmap map -K 30 -E 2 -I /path/to/index/folder -O /path/to/output/folder -t -w -bg
 ```
