@@ -2,8 +2,10 @@
 
 import pandas as pd
 import numpy as np
+
 from tqdm import tqdm
 
+import bioframe as bf
 
 def kmap_bedgraph_to_DF(in_bedgraph_PATH):
     """ """
@@ -53,7 +55,7 @@ def compute_pmap(kmap_array, k_size):
     pmap_Array_Padded = np.concatenate( (Pad_NaN,
                                          pmap_Array,
                                          Pad_NaN) )
-                     
+
     return pmap_Array_Padded
 
 
@@ -104,7 +106,7 @@ def convert_GenomeNParray_To_BEDGRAPH_DF(input_PmapArray, seq_id):
 
     BEDGRAPH_DF = pd.DataFrame(listOfBED_Tuples)
     
-    BEDGRAPH_DF.columns = ["chrom", "chromStart", "chromEnd", "score" ]
+    BEDGRAPH_DF.columns = ["chrom", "start", "end", "score" ]
     
     return BEDGRAPH_DF
 
@@ -120,7 +122,21 @@ def process_nparrays_to_bedgraph_df(nparrays_dict):
 
 
 
+#### Functions to merge and define regions w/ mappability below a threshold ####
 
 
+def getRegions_BelowThreshold_PupMap(Pmap_BEDGRAPH_DF, threshold = 1):
+    """
+    This function takes a DF of pileup mappability and 
+    merges all positions which are below a defined threshold (Default: 1)
+    """
 
+    # Step 1: Filter Pileup Mappability DF for positions BELOW the threshold
+    Pmap_BelowThreshold_DF = Pmap_BEDGRAPH_DF.query(f"score < {threshold} & score >= 0")
 
+    # Step 2: Use Bioframe to merge all neighboring ranges w/ a "low" pileup mappability
+    Pmap_BelowAndMerged_DF = bf.merge(Pmap_BelowThreshold_DF, min_dist=0)
+
+    return Pmap_BelowAndMerged_DF[["chrom", "start", "end"]]
+
+#####################################################################################################
