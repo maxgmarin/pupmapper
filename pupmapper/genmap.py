@@ -35,7 +35,7 @@ def is_genmap_available():
 def run_genmap_index(fasta_path, index_dir):
     cmd = ["genmap", "index", "-F", fasta_path, "-I", index_dir]
 
-    print(f"Running 'genmap index' with command: {' '.join(cmd)} \n")
+    print(f"Running 'genmap index' with command: \n{' '.join(cmd)} \n")
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     
@@ -56,7 +56,7 @@ def run_genmap_map(index_dir, kmap_out_prefix, k_length, errors, threads=1):
                             "-w",
                             "-bg"]
 
-    print(f"Running 'genmap map' with command: {' '.join(cmd)} \n")
+    print(f"Running 'genmap map' with command: \n{' '.join(cmd)} \n")
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:

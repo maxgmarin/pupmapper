@@ -2,9 +2,8 @@
 
 import pandas as pd
 import numpy as np
-
+import os
 from tqdm import tqdm
-
 import bioframe as bf
 
 def kmap_bedgraph_to_DF(in_bedgraph_PATH):
@@ -122,8 +121,29 @@ def process_nparrays_to_bedgraph_df(nparrays_dict):
 
 
 
-#### Functions to merge and define regions w/ mappability below a threshold ####
 
+def save_numpy_array_dict(array_dict, output_dir):
+    """
+    Save numpy arrays of pileup mappability from a dictionary of arrays to a specified directory.
+    Each array is saved in a compressed format (.npz) with the key as the filename.
+
+    Parameters:
+    - array_dict: Dictionary where keys are filenames and values are numpy arrays.
+    - output_dir: Directory where the arrays will be saved.
+    """
+    
+    # Create the output directory if it doesn't exist
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    # Iterate over the dictionary and save each numpy array
+    for key, array in array_dict.items():
+        output_file = os.path.join(output_dir, f"{key}.npz")
+        np.savez_compressed(output_file, array)
+
+
+
+#### Functions to merge and define regions w/ mappability below a threshold ####
 
 def getRegions_BelowThreshold_PupMap(Pmap_BEDGRAPH_DF, threshold = 1):
     """
@@ -135,8 +155,78 @@ def getRegions_BelowThreshold_PupMap(Pmap_BEDGRAPH_DF, threshold = 1):
     Pmap_BelowThreshold_DF = Pmap_BEDGRAPH_DF.query(f"score < {threshold} & score >= 0")
 
     # Step 2: Use Bioframe to merge all neighboring ranges w/ a "low" pileup mappability
-    Pmap_BelowAndMerged_DF = bf.merge(Pmap_BelowThreshold_DF, min_dist=0)
+    if Pmap_BelowThreshold_DF.shape[0] > 0:
+        Pmap_BelowAndMerged_DF = bf.merge(Pmap_BelowThreshold_DF, min_dist=0)
+
+    else:
+        Pmap_BelowAndMerged_DF = pd.DataFrame(columns=["chrom", "start", "end"])
 
     return Pmap_BelowAndMerged_DF[["chrom", "start", "end"]]
 
 #####################################################################################################
+
+
+
+
+
+#### Functions to calculate average pileup mappability across regions of interest (ie genes) ####
+
+
+def parse_gff3_with_pandas(file_path):
+    # Define column names based on the GFF3 format
+    column_names = [
+        "seqname", "source", "feature", "start", "end", "score", "strand", "frame", "attributes"
+    ]
+    
+    # Use pandas to read the file, skip lines starting with '#' (comments), and use tab as the delimiter
+    df = pd.read_csv(
+        file_path, 
+        sep='\t', 
+        comment='#',  # Ignores lines that start with '#'
+        names=column_names,
+        header=None  # No header in GFF files
+    )
+
+    return df
+
+# Example usage:
+# df = parse_gff3_with_pandas('example.gff3')
+# print(df.head())
+
+
+
+def calc_pupmap_per_gene(Pmap_Arrays, input_GFF_PATH):
+    """
+
+    """
+
+    # Step 1: Parse GFF as a Pandas Dataframe 
+
+    Feat_DF = parse_gff3_with_pandas(input_GFF_PATH)
+    Feat_DF.rename(columns={'seqname': 'chrom'}, inplace=True)
+
+    # Step 2: 
+
+    Region_PmapScores = []
+
+    # Iterate over DataFrame rows
+    for index, row in Feat_DF.iterrows():
+        i_chrom = row['chrom']
+        i_start_0idx = row['start'] - 1
+        i_end = row['end']
+
+
+        # Subset the numpy array for the given genomic region
+        subset_Pmap_Scores = Pmap_Arrays[i_chrom][i_start_0idx:i_end]
+
+        # Calculate the average of the subset values
+        mean_Pmap = np.mean(subset_Pmap_Scores)
+
+        Region_PmapScores.append(mean_Pmap)
+    
+    Feat_DF["Mean_PupMap"] = Region_PmapScores
+
+    return Feat_DF
+
+
+
