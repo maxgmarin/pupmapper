@@ -16,7 +16,8 @@ dependencies = [
 	"pandas",
     "numpy",
 	"tqdm",
-	"bioframe>=0.7.2"
+	"bioframe>=0.7.2",
+	"pybigtools==0.2.1"
 ]
 
 [project.scripts]

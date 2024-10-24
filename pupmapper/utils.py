@@ -5,6 +5,9 @@ import numpy as np
 import os
 from tqdm import tqdm
 import bioframe as bf
+#import pybigtools as pbt
+#from pybigtools import BigWigWrite
+import pybigtools 
 
 def kmap_bedgraph_to_DF(in_bedgraph_PATH):
     """ """
@@ -17,6 +20,9 @@ def kmap_bedgraph_to_DF(in_bedgraph_PATH):
 def kmap_DF_To_ArrayDict(i_Kmap_DF):
     """ """
     # Get the maximum end values for each chromosome
+    # (Note this end value is the length of the chromosome - K).
+    # This is how Genmap outputs the kmer mappability info
+
     Dict_ChrToMaxEnd = i_Kmap_DF.groupby("chrom")["end"].max().to_dict()
 
     # Initialize a dictionary to hold the numpy array for each chromosome
@@ -113,11 +119,96 @@ def convert_GenomeNParray_To_BEDGRAPH_DF(input_PmapArray, seq_id):
 
 def process_nparrays_to_bedgraph_df(nparrays_dict):
     all_dfs = []
+
     for seq_id, input_PmapArray in nparrays_dict.items():
         BED_DF = convert_GenomeNParray_To_BEDGRAPH_DF(input_PmapArray, seq_id)
         all_dfs.append(BED_DF)
-    combined_df = pd.concat(all_dfs, ignore_index=True)
-    return combined_df
+
+    Pmap_DF = pd.concat(all_dfs, ignore_index=True)
+    return Pmap_DF
+
+
+
+def validate_PupMap_DF(i_Pmap_DF):
+    # Validate that the input is a DataFrame with required columns
+    if not isinstance(i_Pmap_DF, pd.DataFrame):
+        raise ValueError("Input must be a pandas DataFrame")
+    
+    required_columns = ["chrom", "start", "end", "score"]
+    if list(i_Pmap_DF.columns) != required_columns:
+        raise ValueError(f"Pileup Mappability DataFrame must have columns: {required_columns}")
+
+
+def infer_ChrLengths(i_Pmap_DF):
+    """
+    Computes the maximum 'end' position for each chromosome in the DataFrame,
+    returning a dictionary where keys are chromosome names and values are their lengths.
+    """
+    Dict_ChrToMaxEnd = i_Pmap_DF.groupby("chrom")["end"].max().to_dict()
+    return Dict_ChrToMaxEnd
+
+
+
+def pmap_df_to_bigwig(i_Pmap_DF, out_bigwig_path):
+    """
+    Converts a DataFrame to a BigWig file using the BigWigWrite class.
+
+    Parameters:
+    - i_Pmap_DF: Pandas DataFrame with columns ["chrom", "start", "end", "score"]
+    - out_bigwig_path: Path where the output BigWig file will be written
+    """
+    
+    # Step 1: Validate the input DataFrame
+    validate_PupMap_DF(i_Pmap_DF)
+
+    # Step 2: Infer chromosome lengths from the DataFrame
+    chrom_lengths_dict = infer_ChrLengths(i_Pmap_DF)
+    print(chrom_lengths_dict)
+
+    i_Pmap_DF = i_Pmap_DF.query("score >= 1")
+
+    # Step 3: Create the iterable with values (chromosome, start, end, score)
+
+    values_list = ((row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.head().iterrows())
+    #values_list = [(row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.head(1).iterrows()]
+
+    # Step 4: Open the BigWig file and write the values
+    out_BigWig = pybigtools.open(out_bigwig_path, "w")
+
+    out_BigWig.write( chrom_lengths_dict, values_list)
+
+
+
+def test_bigwig_write(i_Pmap_DF, out_bigwig_path):
+
+    chroms = ["J02459.1"]
+    clengths = {"J02459.1": 48502}
+
+    def genintervals():
+        import random
+
+        for chrom in chroms:
+            clength = clengths[chrom]
+            current = random.randint(0, 300)
+            start = current
+            while True:
+                length = random.randint(1, 200)
+                end = start + length
+                if end > clength:
+                    break
+                value = round(random.random(), 5)
+                yield (chrom, start, end, value)
+                start = end + random.randint(20, 50)
+
+    intervals = list(genintervals())
+    for i in intervals:
+        print(i)
+    print()
+    b = pybigtools.open(out_bigwig_path, "w")
+    b.write(clengths, iter(intervals))
+
+
+
 
 
 
