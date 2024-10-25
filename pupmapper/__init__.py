@@ -215,13 +215,13 @@ def _genmap_and_pup_cli(args):
     Pmap_BEDGRAPH_DF.to_csv(o_PileupMap_BG,
                           sep = "\t", index = False, header=None)
 
-    #pmap_df_to_bigwig(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
-    #test_bigwig_write(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
 
-    run_bigtools_bedgraphtobigwig(i_KMap_BG ,i_chrom_sizes_PATH ,o_PileupMap_BW)
+    pmap_df_to_bigwig(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
+    #run_bigtools_bedgraphtobigwig(i_KMap_BG ,i_chrom_sizes_PATH ,o_PileupMap_BW)
 
     print(f"\n Calculated pileup mappability scores (.bedgraph) output to: {o_PileupMap_BG}")
     print(f"\n Calculated pileup mappability scores (.bigwig) output to: {o_PileupMap_BW}")
+
 
     ## 6) Output all regions with Pileup Mappability below 1 to a .bed file
 

@@ -5,8 +5,6 @@ import numpy as np
 import os
 from tqdm import tqdm
 import bioframe as bf
-#import pybigtools as pbt
-#from pybigtools import BigWigWrite
 import pybigtools 
 
 def kmap_bedgraph_to_DF(in_bedgraph_PATH):
@@ -151,7 +149,7 @@ def infer_ChrLengths(i_Pmap_DF):
 
 def pmap_df_to_bigwig(i_Pmap_DF, out_bigwig_path):
     """
-    Converts a DataFrame to a BigWig file using the BigWigWrite class.
+    Converts a DataFrame to a BigWig file using the pybigtools library.
 
     Parameters:
     - i_Pmap_DF: Pandas DataFrame with columns ["chrom", "start", "end", "score"]
@@ -163,51 +161,14 @@ def pmap_df_to_bigwig(i_Pmap_DF, out_bigwig_path):
 
     # Step 2: Infer chromosome lengths from the DataFrame
     chrom_lengths_dict = infer_ChrLengths(i_Pmap_DF)
-    print(chrom_lengths_dict)
-
-    i_Pmap_DF = i_Pmap_DF.query("score >= 1")
 
     # Step 3: Create the iterable with values (chromosome, start, end, score)
-
-    values_list = ((row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.head().iterrows())
-    #values_list = [(row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.head(1).iterrows()]
+    values_list = ((row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.iterrows())
 
     # Step 4: Open the BigWig file and write the values
     out_BigWig = pybigtools.open(out_bigwig_path, "w")
 
     out_BigWig.write( chrom_lengths_dict, values_list)
-
-
-
-def test_bigwig_write(i_Pmap_DF, out_bigwig_path):
-
-    chroms = ["J02459.1"]
-    clengths = {"J02459.1": 48502}
-
-    def genintervals():
-        import random
-
-        for chrom in chroms:
-            clength = clengths[chrom]
-            current = random.randint(0, 300)
-            start = current
-            while True:
-                length = random.randint(1, 200)
-                end = start + length
-                if end > clength:
-                    break
-                value = round(random.random(), 5)
-                yield (chrom, start, end, value)
-                start = end + random.randint(20, 50)
-
-    intervals = list(genintervals())
-    for i in intervals:
-        print(i)
-    print()
-    b = pybigtools.open(out_bigwig_path, "w")
-    b.write(clengths, iter(intervals))
-
-
 
 
 
