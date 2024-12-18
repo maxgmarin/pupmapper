@@ -14,15 +14,15 @@ from ._version import __version__
 from .utils import kmap_bedgraph_to_DF, kmap_DF_To_ArrayDict
 from .utils import convert_kmap_to_pmap_arrays
 from .utils import process_nparrays_to_bedgraph_df, save_numpy_array_dict
-from .utils import getRegions_BelowThreshold_PupMap
+from .utils import getRegions_BelowThreshold_PupMap, summarize_pileup_map
+
 from .utils import calc_pupmap_per_gene
-from .utils import pmap_df_to_bigwig, test_bigwig_write
+#from .utils import pmap_df_to_bigwig
 
 from .genmap import get_fasta_basename
 from .genmap import is_genmap_available, run_genmap_index, run_genmap_map
 
-
-from .run_bigtools import is_bigtools_available, run_bigtools_bedgraphtobigwig
+# from .run_bigtools import is_bigtools_available, run_bigtools_bedgraphtobigwig
 
 
 
@@ -77,13 +77,18 @@ def _pup_cli(args):
     ## 1) Set input parameters and PATHs ####
     input_KMap_BG = args.input
 
-    output_PileupMap_BG = args.output
-
+    o_PileupMap_BG = args.output
+    
     kmer_len = args.kmer_len
 
     input_Genome_GFF = args.gff 
 
     save_npz = args.save_numpy
+
+    
+    out_base_path, _ = os.path.splitext(o_PileupMap_BG)
+
+    o_PileupMap_BW = f"{out_base_path}.bigwig"
 
 
     ## 2) Parse k-mer mappability bedgraph file as Pandas DF
@@ -99,10 +104,15 @@ def _pup_cli(args):
 
     Pmap_BEDGRAPH_DF = process_nparrays_to_bedgraph_df(Pmap_Arrays)
 
-    Pmap_BEDGRAPH_DF.to_csv(output_PileupMap_BG,
+    Pmap_BEDGRAPH_DF.to_csv(o_PileupMap_BG,
                           sep = "\t", index = False)
 
-    print(f" Calculated pileup mappability scores (.bedgraph) output to: {output_PileupMap_BG}")
+    
+    #pmap_df_to_bigwig(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
+
+    print(f"\n Calculated pileup mappability scores (.bedgraph) output to: {o_PileupMap_BG}")
+    #print(f"\n Calculated pileup mappability scores (.bigwig) output to: {o_PileupMap_BW}")
+
     
     ## 6) Output all regions with Pileup Mappability below 1 to a .bed file
 
@@ -216,12 +226,24 @@ def _genmap_and_pup_cli(args):
                           sep = "\t", index = False, header=None)
 
 
-    pmap_df_to_bigwig(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
+    #pmap_df_to_bigwig(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
     #run_bigtools_bedgraphtobigwig(i_KMap_BG ,i_chrom_sizes_PATH ,o_PileupMap_BW)
 
     print(f"\n Calculated pileup mappability scores (.bedgraph) output to: {o_PileupMap_BG}")
-    print(f"\n Calculated pileup mappability scores (.bigwig) output to: {o_PileupMap_BW}")
+    #print(f"\n Calculated pileup mappability scores (.bigwig) output to: {o_PileupMap_BW}")
 
+
+
+    ######### Calc summary stats #########
+    o_PupMap_Summary_TSV = args.outdir + f"/{Genome_FA_BaseName}.PileupMap.K{kmer_length}_E{errors}.Summary.tsv"
+
+    Pmap_Summ_DF = summarize_pileup_map(Pmap_BEDGRAPH_DF, Genome_FA_BaseName, kmer_length, errors)
+    Pmap_Summ_DF.to_csv(o_PupMap_Summary_TSV, sep="\t", index = False)
+
+    print(f"\n Summary stats of pileup mappability output to: {o_PupMap_Summary_TSV}")
+
+
+    ###########################################################################
 
     ## 6) Output all regions with Pileup Mappability below 1 to a .bed file
 

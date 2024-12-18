@@ -5,7 +5,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 import bioframe as bf
-import pybigtools 
+
 
 def kmap_bedgraph_to_DF(in_bedgraph_PATH):
     """ """
@@ -146,29 +146,29 @@ def infer_ChrLengths(i_Pmap_DF):
     return Dict_ChrToMaxEnd
 
 
+# import pybigtools 
+# def pmap_df_to_bigwig(i_Pmap_DF, out_bigwig_path):
+#     """
+#     Converts a DataFrame to a BigWig file using the pybigtools library.
 
-def pmap_df_to_bigwig(i_Pmap_DF, out_bigwig_path):
-    """
-    Converts a DataFrame to a BigWig file using the pybigtools library.
-
-    Parameters:
-    - i_Pmap_DF: Pandas DataFrame with columns ["chrom", "start", "end", "score"]
-    - out_bigwig_path: Path where the output BigWig file will be written
-    """
+#     Parameters:
+#     - i_Pmap_DF: Pandas DataFrame with columns ["chrom", "start", "end", "score"]
+#     - out_bigwig_path: Path where the output BigWig file will be written
+#     """
     
-    # Step 1: Validate the input DataFrame
-    validate_PupMap_DF(i_Pmap_DF)
+#     # Step 1: Validate the input DataFrame
+#     validate_PupMap_DF(i_Pmap_DF)
 
-    # Step 2: Infer chromosome lengths from the DataFrame
-    chrom_lengths_dict = infer_ChrLengths(i_Pmap_DF)
+#     # Step 2: Infer chromosome lengths from the DataFrame
+#     chrom_lengths_dict = infer_ChrLengths(i_Pmap_DF)
 
-    # Step 3: Create the iterable with values (chromosome, start, end, score)
-    values_list = ((row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.iterrows())
+#     # Step 3: Create the iterable with values (chromosome, start, end, score)
+#     values_list = ((row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.iterrows())
 
-    # Step 4: Open the BigWig file and write the values
-    out_BigWig = pybigtools.open(out_bigwig_path, "w")
+#     # Step 4: Open the BigWig file and write the values
+#     out_BigWig = pybigtools.open(out_bigwig_path, "w")
 
-    out_BigWig.write( chrom_lengths_dict, values_list)
+#     out_BigWig.write( chrom_lengths_dict, values_list)
 
 
 
@@ -216,6 +216,43 @@ def getRegions_BelowThreshold_PupMap(Pmap_BEDGRAPH_DF, threshold = 1):
     return Pmap_BelowAndMerged_DF[["chrom", "start", "end"]]
 
 #####################################################################################################
+
+
+
+
+def summarize_pileup_map(i_Pmap_DF, genome_name, k, e):
+    
+    # Calculate length sums for different score thresholds
+    i_Pmap_DF["length"] = i_Pmap_DF["end"] - i_Pmap_DF["start"]
+    total_length = i_Pmap_DF["length"].sum()
+    pmap_bp_below1 = i_Pmap_DF.query("score >= 0 & score < 1")["length"].sum()
+    pmap_bp_below09 = i_Pmap_DF.query("score >= 0 & score < 0.9")["length"].sum()
+    pmap_bp_below075 = i_Pmap_DF.query("score >= 0 & score < 0.75")["length"].sum()
+    pmap_bp_below05 = i_Pmap_DF.query("score >= 0 & score < 0.5")["length"].sum()
+    pmap_bp_below025 = i_Pmap_DF.query("score >= 0 & score < 0.25")["length"].sum()
+
+    # Create a single-row DataFrame with the calculated values
+    pmap_summ_df = pd.DataFrame({
+        "Genome": [genome_name],
+        "K": [k],
+        "E": [e],
+        "Length": [total_length],
+        "Pupmap_Below1": [pmap_bp_below1],
+        "Pupmap_Below0.9": [pmap_bp_below09],
+        "Pupmap_Below0.7": [pmap_bp_below075],
+        "Pupmap_Below0.5": [pmap_bp_below05],
+        "Pupmap_Below0.25": [pmap_bp_below025]
+    })
+    
+    return pmap_summ_df
+
+# Example usage
+# result_df = summarize_pileup_map(i_Pmap_DF, "GenomeName", "K_value", "E_value")
+# print(result_df)
+
+
+
+
 
 
 

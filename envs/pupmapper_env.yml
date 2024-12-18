@@ -1,0 +1,11 @@
+name: pupmapper_env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - genmap=1.3
+  - pip
+  - rust  # Add Rust for compilation
+  - pip:
+      - pupmapper==0.0.5

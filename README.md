@@ -49,6 +49,9 @@ A pileup mappability score of 1 indicates that all k-mers overlapping with a pos
 > Lee H, Schatz MC. (2012). Genomic dark matter: the reliability of short read mapping illustrated by the genome mappability score, Bioinformatics, Volume 28, Issue 16, August 2012, Pages 2097–2105, [https://doi.org/10.1093/bioinformatics/bts330](https://doi.org/10.1093/bioinformatics/bts330)
 
 ## Installation
+
+You will need to install both the `pupmapper` python package and ensure that the [genmap](https://github.com/cpockrandt/genmap) software is installed (available on your $PATH environmental variable.)
+
 ### Install locally
 `pupmapper` can be installed by cloning this repository and installing with `pip`.
 
@@ -61,7 +64,9 @@ pip install .
 ```
 
 ### `pip`
->🚧 Check back soon 🚧
+```
+pip install pupmapper
+```
 
 ### `conda`
 >🚧 Check back soon 🚧
