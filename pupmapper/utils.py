@@ -246,13 +246,39 @@ def summarize_pileup_map(i_Pmap_DF, genome_name, k, e):
     
     return pmap_summ_df
 
-# Example usage
-# result_df = summarize_pileup_map(i_Pmap_DF, "GenomeName", "K_value", "E_value")
-# print(result_df)
 
 
+def summarize_pileup_map_per_chromosome(i_Pmap_DF, genome_name, k, e):
+    """
+    Summarizes the pileup mappability per chromosome.
+    """
+    # Calculate length sums for different score thresholds per chromosome
+    i_Pmap_DF["length"] = i_Pmap_DF["end"] - i_Pmap_DF["start"]
+    summary_list = []
 
+    for chrom, group in i_Pmap_DF.groupby("chrom"):
+        total_length = group["length"].sum()
+        pmap_bp_below1 = group.query("score >= 0 & score < 1")["length"].sum()
+        pmap_bp_below09 = group.query("score >= 0 & score < 0.9")["length"].sum()
+        pmap_bp_below075 = group.query("score >= 0 & score < 0.75")["length"].sum()
+        pmap_bp_below05 = group.query("score >= 0 & score < 0.5")["length"].sum()
+        pmap_bp_below025 = group.query("score >= 0 & score < 0.25")["length"].sum()
 
+        summary_list.append({
+            "Genome": genome_name,
+            "Chromosome": chrom,
+            "K": k,
+            "E": e,
+            "Length": total_length,
+            "Pupmap_Below1": pmap_bp_below1,
+            "Pupmap_Below0.9": pmap_bp_below09,
+            "Pupmap_Below0.7": pmap_bp_below075,
+            "Pupmap_Below0.5": pmap_bp_below05,
+            "Pupmap_Below0.25": pmap_bp_below025
+        })
+
+    summary_df = pd.DataFrame(summary_list)
+    return summary_df
 
 
 

@@ -14,138 +14,17 @@ from ._version import __version__
 from .utils import kmap_bedgraph_to_DF, kmap_DF_To_ArrayDict
 from .utils import convert_kmap_to_pmap_arrays
 from .utils import process_nparrays_to_bedgraph_df, save_numpy_array_dict
-from .utils import getRegions_BelowThreshold_PupMap, summarize_pileup_map
+from .utils import getRegions_BelowThreshold_PupMap, summarize_pileup_map, summarize_pileup_map_per_chromosome
 
 from .utils import calc_pupmap_per_gene
 #from .utils import pmap_df_to_bigwig
 
-from .genmap import get_fasta_basename
-from .genmap import is_genmap_available, run_genmap_index, run_genmap_map
+from .genmap import get_fasta_basename, run_genmap_index, run_genmap_map
+from .genmap import is_genmap_available, check_genmap_version
 
-# from .run_bigtools import is_bigtools_available, run_bigtools_bedgraphtobigwig
-
-
-
-def _genmap_2steps_cli(args):
-
-    # Step 1: Set input parameters and define variables for relevant paths
-    input_Genome_FA = args.in_genome_fa 
-
-    kmer_length = args.kmer_len
-
-    errors = args.errors
-
-    index_dir = args.outdir + "/genmap_index"
-
-    kmap_dir = args.outdir + "/genmap_kmap_K" + str(kmer_length) + "_E" + str(errors)
+from .run_bigtools import is_bigtools_available, run_bigtools_bedgraphtobigwig, check_bigtools_version
 
 
-    FA_BaseName = get_fasta_basename(input_Genome_FA)
-
-    genmap_out_prefix = kmap_dir + "/" + FA_BaseName + ".kmermap." + "K" + str(kmer_length) + "_E" + str(errors)
-
-    # Create the target output directory
-    os.makedirs(args.outdir, exist_ok=True)
-    os.makedirs(kmap_dir, exist_ok=True)
-
-    # Step 2: Check if Genmap is available in the path
-    if not is_genmap_available():
-        raise EnvironmentError("genmap is not available on the PATH. Please install it or fix your PATH.")
-
-    # Step 3: Run Genmap Index step for input genome
-
-    run_genmap_index(input_Genome_FA,
-                     index_dir)
-
-    # Step 4: Run Genmap MAP step for genome (after indexing) to calculate k-mer mappability
-
-    run_genmap_map(index_dir,
-                   genmap_out_prefix,
-                   kmer_length,
-                   errors)
-    
-    print(f"Genmap processing completed.\nOutput files saved to: {args.outdir}")
-    print(f"Indexed genome files saved to: {index_dir}")
-    print(f"K-mer mappability files saved to: {kmap_dir}")
-    print("")
-
-
-
-
-
-def _pup_cli(args):
-    ## 1) Set input parameters and PATHs ####
-    input_KMap_BG = args.input
-
-    o_PileupMap_BG = args.output
-    
-    kmer_len = args.kmer_len
-
-    input_Genome_GFF = args.gff 
-
-    save_npz = args.save_numpy
-
-    
-    out_base_path, _ = os.path.splitext(o_PileupMap_BG)
-
-    o_PileupMap_BW = f"{out_base_path}.bigwig"
-
-
-    ## 2) Parse k-mer mappability bedgraph file as Pandas DF
-    Kmap_DF = kmap_bedgraph_to_DF(input_KMap_BG)
-
-    ## 3) Convert kmap_DF to dict of numpy arrays of k-mer mappability
-    Kmap_Arrays = kmap_DF_To_ArrayDict(Kmap_DF)
-
-    ## 4) For each chromosome, calculate Pileup Mappability from k-mer mappability
-    Pmap_Arrays = convert_kmap_to_pmap_arrays(Kmap_Arrays, kmer_len)
-
-    ## 5) Output the calculated pileup mappability values as a .bedgraph table
-
-    Pmap_BEDGRAPH_DF = process_nparrays_to_bedgraph_df(Pmap_Arrays)
-
-    Pmap_BEDGRAPH_DF.to_csv(o_PileupMap_BG,
-                          sep = "\t", index = False)
-
-    
-    #pmap_df_to_bigwig(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
-
-    print(f"\n Calculated pileup mappability scores (.bedgraph) output to: {o_PileupMap_BG}")
-    #print(f"\n Calculated pileup mappability scores (.bigwig) output to: {o_PileupMap_BW}")
-
-    
-    ## 6) Output all regions with Pileup Mappability below 1 to a .bed file
-
-    o_PileupMap_Below1_BED = args.outdir + f"/{Genome_FA_BaseName}.PileupMap.K{kmer_length}_E{errors}.bed"
-
-    Pmap_Below1Merge_DF = getRegions_BelowThreshold_PupMap(Pmap_BEDGRAPH_DF, threshold = 1)
-    
-    Pmap_Below1Merge_DF.to_csv(o_PileupMap_Below1_BED, 
-                          sep = "\t", index = False, header=None)
-
-    print(f" All regions w/ pileup mappability scores below 1 (.bed) output to: {o_PileupMap_Below1_BED}")
-    
-
-    # Step 7: OPTIONAL - Calculate average pileup mappability across all features in genome's GFF file
-    if input_Genome_GFF != None:
-        
-        print(f" Starting calculation of mean pileup mappability per feature in provided GFF file ({input_Genome_GFF})")
-
-        PupMap_PerFeature_DF = calc_pupmap_per_gene(Pmap_Arrays,
-                                                    input_Genome_GFF)
-
-        o_Features_Wi_MeanPupmap_TSV = args.outdir + f"/{Genome_FA_BaseName}.PerFeature.MeanPileupMap.K{kmer_length}_E{errors}.tsv"
-
-        PupMap_PerFeature_DF.to_csv(o_Features_Wi_MeanPupmap_TSV, 
-                                    sep = "\t", index = False)
-
-        print(f"\n Annotated features scored by mean pileup mappability output to: \n   {o_Features_Wi_MeanPupmap_TSV}\n")
-
-    # Step 8: Optional - output all calculated pileup mappability values as compressed numpy arrays (.npz)
-
-    if save_npz:
-        pmap_npz_dir = args.outdir + f"/{Genome_FA_BaseName}.PileupMap.NumpyArrays/"
-        save_numpy_array_dict(Pmap_Arrays, pmap_npz_dir)
 
 
 def _genmap_and_pup_cli(args):
@@ -163,10 +42,20 @@ def _genmap_and_pup_cli(args):
     input_Genome_GFF = args.gff 
 
     save_npz = args.save_numpy
+    save_bigwig = args.save_bigwig
+    verbose = args.verbose
 
     index_dir = args.outdir + "/genmap_index"
     kmap_dir = args.outdir + "/genmap_kmap_K" + str(kmer_length) + "_E" + str(errors)
     
+    # Check if output directory already exists
+    if os.path.exists(index_dir):
+        if verbose:
+            print("WARNING: Output sub-directory for 'genmap index' step already exists in target output directory.")
+            print("The existing directory is going to be delete before running the 'genmap index' step.")
+        shutil.rmtree(index_dir)
+
+
     Genome_FA_BaseName = get_fasta_basename(input_Genome_FA)
 
     genmap_out_prefix = kmap_dir + "/" + Genome_FA_BaseName + ".kmermap." + "K" + str(kmer_length) + "_E" + str(errors)
@@ -178,8 +67,16 @@ def _genmap_and_pup_cli(args):
     # Step 2: Check if Genmap is available in the path
     if not is_genmap_available():
         raise EnvironmentError("genmap is not available on the PATH. Please install it or fix your PATH.")
-        
+
+    # Check versions of genmap and bigtools
+    if verbose:
+        print("\nChecking versions of genmap and bigtools:")
+        check_genmap_version()
+        check_bigtools_version()
+
+
     # Step 3: Run Genmap Index step for input genome
+    print(f"Step 1: Starting k-mer mappability calculation steps with Genmap\n")
 
     run_genmap_index(input_Genome_FA,
                      index_dir)
@@ -191,13 +88,18 @@ def _genmap_and_pup_cli(args):
                    kmer_length,
                    errors)
     
-    print(f"Genmap processing completed.\nOutput files saved to: {args.outdir}")
-    print(f"\nIndexed genome files saved to: {index_dir}")
-    print(f"\nK-mer mappability files saved to: {kmap_dir}")
-    print("\n")
+
+    if verbose:
+        print(f"\n   genmap genome index files saved to: {index_dir}")
+        print(f"\n   genmap K-mer mappability files saved to: {kmap_dir}")
+        print("\n")
+
+    print(f"Step 1 - Finished\n")
 
 
     # Step 5: Run pileup mappability calculation on k-mer mappability values
+
+    print(f"Step 2 - Calculating pileup mappability scores and summary statistics\n")
 
     ## 5.1) Define input and output file paths (.bedgraph format) ####
 
@@ -227,20 +129,31 @@ def _genmap_and_pup_cli(args):
 
 
     #pmap_df_to_bigwig(Pmap_BEDGRAPH_DF, o_PileupMap_BW)
-    #run_bigtools_bedgraphtobigwig(i_KMap_BG ,i_chrom_sizes_PATH ,o_PileupMap_BW)
+    if save_bigwig:
+        if is_bigtools_available():
+            run_bigtools_bedgraphtobigwig(o_PileupMap_BG, i_chrom_sizes_PATH ,o_PileupMap_BW)
+            #print(f"\n  pileup mappability scores (.bedgraph) converted to .bigwig: {o_PileupMap_BG}")
 
-    print(f"\n Calculated pileup mappability scores (.bedgraph) output to: {o_PileupMap_BG}")
-    #print(f"\n Calculated pileup mappability scores (.bigwig) output to: {o_PileupMap_BW}")
+        else:
+            raise EnvironmentError("bigtools is not available on the PATH. bigtools is needed to convert bedgraph to bigwig format.")
 
 
 
     ######### Calc summary stats #########
-    o_PupMap_Summary_TSV = args.outdir + f"/{Genome_FA_BaseName}.PileupMap.K{kmer_length}_E{errors}.Summary.tsv"
+    o_PupMap_PerGenome_Summary_TSV = args.outdir + f"/{Genome_FA_BaseName}.PileupMap.K{kmer_length}_E{errors}.Summary.tsv"
+    o_PupMap_PerChrom_Summary_TSV = args.outdir + f"/{Genome_FA_BaseName}.PileupMap.K{kmer_length}_E{errors}.PerContig.tsv"
 
-    Pmap_Summ_DF = summarize_pileup_map(Pmap_BEDGRAPH_DF, Genome_FA_BaseName, kmer_length, errors)
-    Pmap_Summ_DF.to_csv(o_PupMap_Summary_TSV, sep="\t", index = False)
+    Pmap_Summ_PerGenome_DF = summarize_pileup_map(Pmap_BEDGRAPH_DF, Genome_FA_BaseName, kmer_length, errors)
+    Pmap_Summ_PerGenome_DF.to_csv(o_PupMap_PerGenome_Summary_TSV, sep="\t", index = False)
 
-    print(f"\n Summary stats of pileup mappability output to: {o_PupMap_Summary_TSV}")
+
+    Pmap_Summ_PerChrom_DF = summarize_pileup_map_per_chromosome(Pmap_BEDGRAPH_DF, Genome_FA_BaseName, kmer_length, errors)
+    Pmap_Summ_PerChrom_DF.to_csv(o_PupMap_PerChrom_Summary_TSV, sep="\t", index = False)
+
+    
+    if verbose:
+        print(f"\nSummary stats of genome-wide pileup mappability output to: {o_PupMap_Summary_TSV}")
+        print(f"\nSummary stats of per contig pileup mappability output to: {o_PupMap_Summary_TSV}")
 
 
     ###########################################################################
@@ -254,17 +167,14 @@ def _genmap_and_pup_cli(args):
     Pmap_Below1Merge_DF.to_csv(o_PileupMap_Below1_BED, 
                           sep = "\t", index = False, header=None)
 
-    print(f"\n All regions w/ pileup mappability scores below 1 (.bed) output to: {o_PileupMap_Below1_BED}")
+    if verbose:
+        print(f"\nAll regions w/ pileup mappability scores below 1 (.bed) output to: {o_PileupMap_Below1_BED}")
     
-
-    # N_Pos_PmapBelowThreshold = Pmap_BEDGRAPH_DF.query(f"score < 1 & score >= 0").shape[0]
-    # print(f"\n\n    Number of REGIONs with pileup mappability scores below 1: {N_Pos_PmapBelowThreshold} ")
-
 
     # Step 7: OPTIONAL - Calculate average pileup mappability across all features in genome's GFF file
     if input_Genome_GFF != None:
-        
-        print(f"\n Starting calculation of mean pileup mappability per feature in user provided GFF file:  \n   {input_Genome_GFF}")
+        if verbose:
+            print(f"\n Starting calculation of mean pileup mappability per feature in user provided GFF file:  \n   {input_Genome_GFF}")
 
         PupMap_PerFeature_DF = calc_pupmap_per_gene(Pmap_Arrays,
                                                     input_Genome_GFF)
@@ -274,7 +184,8 @@ def _genmap_and_pup_cli(args):
         PupMap_PerFeature_DF.to_csv(o_Features_Wi_MeanPupmap_TSV, 
                                     sep = "\t", index = False)
 
-        print(f"\n Annotated features scored by mean pileup mappability output to: \n   {o_Features_Wi_MeanPupmap_TSV}\n")
+        if verbose:
+            print(f"\n Annotated features scored by mean pileup mappability output to: \n   {o_Features_Wi_MeanPupmap_TSV}\n")
 
 
     # Step 8: Optional - output all calculated pileup mappability values as compressed numpy arrays (.npz)
@@ -285,6 +196,62 @@ def _genmap_and_pup_cli(args):
 
         kmermap_npz_dir = args.outdir + f"/{Genome_FA_BaseName}.KmerMap.NumpyArrays/"
         save_numpy_array_dict(Kmap_Arrays, kmermap_npz_dir)
+
+
+    print(f"Step 2 - Finished\n")
+
+    print(f"All output files and sub-directories saved to: \n{args.outdir}\n")
+
+
+
+
+
+def _genmap_2steps_cli(args):
+
+    # Step 1: Set input parameters and define variables for relevant paths
+    input_Genome_FA = args.in_genome_fa 
+
+    kmer_length = args.kmer_len
+
+    errors = args.errors
+
+    index_dir = args.outdir + "/genmap_index"
+
+    kmap_dir = args.outdir + "/genmap_kmap_K" + str(kmer_length) + "_E" + str(errors)
+
+
+    FA_BaseName = get_fasta_basename(input_Genome_FA)
+
+    genmap_out_prefix = kmap_dir + "/" + FA_BaseName + ".kmermap." + "K" + str(kmer_length) + "_E" + str(errors)
+
+    # Create the target output directory
+    os.makedirs(args.outdir, exist_ok=True)
+    os.makedirs(kmap_dir, exist_ok=True)
+
+    # Step 2: Check if Genmap is available in the path
+    if not is_genmap_available():
+        raise EnvironmentError("genmap is not available on the PATH. Please install it or fix your PATH.")
+
+    # Step 3: Run genmap "index" step for input genome
+
+    run_genmap_index(input_Genome_FA,
+                     index_dir)
+
+    # Step 4: Run genmap "map" step for genome (after indexing) to calculate k-mer mappability
+
+    run_genmap_map(index_dir,
+                   genmap_out_prefix,
+                   kmer_length,
+                   errors)
+    
+    print(f"Genmap processing completed.\nOutput files saved to: {args.outdir}")
+    print(f"Indexed genome files saved to: {index_dir}")
+    print(f"K-mer mappability files saved to: {kmap_dir}")
+    print("")
+
+
+
+
 
 def main():
 
@@ -339,7 +306,6 @@ def main():
     parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
 
 
-
     sub_parser_1 = parser.add_subparsers(required=True, help='Please select one of the sub-pipelines of the Pupmapper.\n')
 
     # 1) Create parser for running ALL steps (Genmap then Pileup mappability calculation)
@@ -362,12 +328,19 @@ def main():
 
     run_genmap_and_pup_parser.add_argument('--save-numpy', action='store_true', required=False,
                                   help="If enabled, all pileup mappability scores will be output as compressed numpy arrays (.npz).")
+    
+    run_genmap_and_pup_parser.add_argument('--save-bigwig', action='store_true', required=False,
+                                  help="If enabled, pileup mappability scores will be output in .bigwig format.")
+    
+    run_genmap_and_pup_parser.add_argument('--verbose', action='store_true', required=False,
+                                  help="Output additional messages during processing. Useful for troubleshooting.")
+    
 
     run_genmap_and_pup_parser.set_defaults(func=_genmap_and_pup_cli)
 
 
     # 2) Create parser for running Genmap Index + Map steps
-    run_genmap_parser = sub_parser_1.add_parser("run_genmap", help="Wrapper command for running Genmap processing on input FASTA (2 Steps, indexing + k-mer mappability calculation. For more control of parameters, run 'genmap index' and 'genmap map' separately)")
+    run_genmap_parser = sub_parser_1.add_parser("run_genmap", help="Wrapper command for running Genmap processing on input FASTA (2 Steps, indexing + k-mer mappability calculation.")
 
     run_genmap_parser.add_argument('-i', '--in_genome_fa', type=str, required=True,
                                   help="Input genome fasta file (.fasta)")
@@ -382,27 +355,6 @@ def main():
                                   help="Number of errors (mismatches) allowed in Genmap's k-mer mappability calculation")
     
     run_genmap_parser.set_defaults(func=_genmap_2steps_cli)
-
-
-    # 3) Create k-map to pup parser
-    kmap_to_pup_parser = sub_parser_1.add_parser("run_pileup", help="Calculate pileup mappability based on k-mer mappability values (bedgraph format)")
-
-    kmap_to_pup_parser.add_argument('-i', '--input', type=str, required=True,
-                                  help="Input k-mer mappability values in bedgraph format (.bedgraph). Ideally, generated with genmap software")
-
-    kmap_to_pup_parser.add_argument('-o', '--output', type=str, required=True,
-                                                    help="Output table of pileup mappability (.bedgraph)")
-
-    kmap_to_pup_parser.add_argument('-k', '--kmer_len',type=int, required=True,
-                                  help="k-mer length (bp) used to generate the input k-mer mappability values")
-
-    kmap_to_pup_parser.add_argument('-g', '--gff', type=str, required=False,
-                                  help="GFF formatted genome annotations for input genome (.gff) (Optional Input)")
-
-    kmap_to_pup_parser.add_argument('--save-numpy', action='store_true', required=False,
-                                  help="If enabled, all k-mer and pileup mappability scores will be output as compressed numpy arrays (.npz).")
-
-    kmap_to_pup_parser.set_defaults(func=_pup_cli)
 
 
     ### Check if no arguments were provided, if so exit with help message

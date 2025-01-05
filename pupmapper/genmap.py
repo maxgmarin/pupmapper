@@ -6,6 +6,16 @@ import os
 import subprocess
 import shutil
 
+def is_genmap_available():
+    return shutil.which("genmap") is not None
+
+def check_genmap_version():
+    try:
+        result = subprocess.run(['genmap', '--version'], capture_output=True, text=True, check=True)
+        print(f"genmap version:\n{result.stdout}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking genmap version:\n{e.stderr}")
+
 
 def infer_genmap_prefix_from_fasta_path(fasta_path):
     # Get the base name of the file (i.e., with extension)
@@ -28,14 +38,13 @@ def get_fasta_basename(fasta_path):
     return file_name_without_ext
 
 
-def is_genmap_available():
-    return shutil.which("genmap") is not None
 
 
-def run_genmap_index(fasta_path, index_dir):
+def run_genmap_index(fasta_path, index_dir, verbose = False):
     cmd = ["genmap", "index", "-F", fasta_path, "-I", index_dir]
-
-    print(f"Running 'genmap index' with command: \n{' '.join(cmd)} \n")
+    
+    if verbose:
+        print(f"Running 'genmap index' with command: \n{' '.join(cmd)} \n")
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     
@@ -43,10 +52,11 @@ def run_genmap_index(fasta_path, index_dir):
         print(f"Error running genmap index: {result.stderr}")
         
     else:
-        print("genmap index completed successfully.\n")
+        if verbose:
+            print(f"genmap index completed successfully.\n")
 
 
-def run_genmap_map(index_dir, kmap_out_prefix, k_length, errors, threads=1):
+def run_genmap_map(index_dir, kmap_out_prefix, k_length, errors, threads=1, verbose = False):
 
     cmd = ["genmap", "map", "-K", str(k_length),
                             "-E", str(errors),
@@ -56,11 +66,12 @@ def run_genmap_map(index_dir, kmap_out_prefix, k_length, errors, threads=1):
                             "-w",
                             "-bg"]
 
-    print(f"Running 'genmap map' with command: \n{' '.join(cmd)} \n")
+    if verbose:
+        print(f"Running 'genmap map' with command: \n{' '.join(cmd)} \n")
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"Error running genmap map: {result.stderr}")
     else:
-        print("genmap map completed successfully.\n")
-
+        if verbose:
+            print(f"genmap map completed successfully.\n")

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "pupmapper"
 description = "Tool & python package for calculating genome wide pileup mappability"
 readme = "README.md"
-version = "0.0.6"
+version = "0.0.7"
 authors = [
     { name = "Maximillian Marin", email = "maximilliangmarin@gmail.com" }
 ]
