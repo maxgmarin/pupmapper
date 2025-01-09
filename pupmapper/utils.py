@@ -51,15 +51,18 @@ def compute_pmap(kmap_array, k_size):
     # This list comprehension will iterate over all windows of the array and calculate the mean kmer mappability within that window
     pmap_Array = np.array([ np.mean(kmap_array[e - (k_size): e ]) for e in np.arange(k_size, len(kmap_array) + 1 ) ])
 
-    # Create empty array of NaN values for padding pmap array
-    #Pad_NaN = np.full((k_size - 1,), np.nan) # Length is k -1
-    Pad_NaN = np.full((k_size - 1,), -1) # Length is k -1
+    # The window size is k_size, so the first elements will be the mean of the first k_size elements
+    pmap_first_positions = np.array([np.mean(kmap_array[: f]) for f in np.arange(1, k_size)])
 
-    pmap_Array_Padded = np.concatenate( (Pad_NaN,
+    # The last k positions will have the same pileup mappability value as the last kmer mappability value
+    last_k_mappability_value = kmap_array[-1]
+    pmap_last_positions = np.full((k_size - 1,), last_k_mappability_value) # Length is k -1
+
+    pmap_Array_Final = np.concatenate( (pmap_first_positions,
                                          pmap_Array,
-                                         Pad_NaN) )
+                                         pmap_last_positions) )
 
-    return pmap_Array_Padded
+    return pmap_Array_Final
 
 
 def convert_kmap_to_pmap_arrays(Kmap_Arrays, k_size):
@@ -144,33 +147,6 @@ def infer_ChrLengths(i_Pmap_DF):
     """
     Dict_ChrToMaxEnd = i_Pmap_DF.groupby("chrom")["end"].max().to_dict()
     return Dict_ChrToMaxEnd
-
-
-# import pybigtools 
-# def pmap_df_to_bigwig(i_Pmap_DF, out_bigwig_path):
-#     """
-#     Converts a DataFrame to a BigWig file using the pybigtools library.
-
-#     Parameters:
-#     - i_Pmap_DF: Pandas DataFrame with columns ["chrom", "start", "end", "score"]
-#     - out_bigwig_path: Path where the output BigWig file will be written
-#     """
-    
-#     # Step 1: Validate the input DataFrame
-#     validate_PupMap_DF(i_Pmap_DF)
-
-#     # Step 2: Infer chromosome lengths from the DataFrame
-#     chrom_lengths_dict = infer_ChrLengths(i_Pmap_DF)
-
-#     # Step 3: Create the iterable with values (chromosome, start, end, score)
-#     values_list = ((row["chrom"], row["start"], row["end"], row["score"]) for _, row in i_Pmap_DF.iterrows())
-
-#     # Step 4: Open the BigWig file and write the values
-#     out_BigWig = pybigtools.open(out_bigwig_path, "w")
-
-#     out_BigWig.write( chrom_lengths_dict, values_list)
-
-
 
 
 
@@ -304,13 +280,8 @@ def parse_gff3_with_pandas(file_path):
 
     return df
 
-# Example usage:
-# df = parse_gff3_with_pandas('example.gff3')
-# print(df.head())
 
-
-
-def calc_pupmap_per_gene(Pmap_Arrays, input_GFF_PATH):
+def calc_pupmap_per_annotated_feature(Pmap_Arrays, input_GFF_PATH):
     """
 
     """

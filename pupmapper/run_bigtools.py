@@ -32,5 +32,5 @@ def run_bigtools_bedgraphtobigwig(bedgraph_file, chromsizes_file, output_file, t
     if result.returncode != 0:
         print(f"Error running bigtools bedgraphtobigwig: {result.stderr}")
     else:
-        print("bigtools bedgraphtobigwig completed successfully.\n")
-
+        if verbose:
+            print("bigtools bedgraphtobigwig completed successfully.\n")
