@@ -37,7 +37,7 @@ The Pileup mappability of a position is specifically calculated as the mean k-me
 
 A pileup mappability score of 1 indicates that all k-mers overlapping with a position are unique within the genome (using the user defined parameters of uniqueness).
 
-**Pileup mappability is useful because it gives a sense of uniquemess of all possible reads (of defined length) that could align to a given position.**
+**Simply put, Pileup mappability is useful because it gives a sense of uniquemess of all possible reads (of defined length) that could arise from given genomic position.**
 
 
 ### Useful reading for k-mer mappability and pileup mappability:
