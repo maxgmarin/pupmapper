@@ -51,9 +51,11 @@ A pileup mappability score of 1 indicates that all k-mers overlapping with a pos
 ## Installation
 
 You will need to install both the `pupmapper` python package and ensure that the [genmap](https://github.com/cpockrandt/genmap) software is installed (available on your $PATH environmental variable.)
+If conda is used for installation software dependencies are installed automatically
 
 ### Install locally
 `pupmapper` can be installed by cloning this repository and installing with `pip`.
+
 
 ```
 git clone git@github.com:maxgmarin/pupmapper.git
@@ -69,8 +71,10 @@ pip install pupmapper
 ```
 
 ### `conda`
->🚧 Check back soon 🚧
-
+Installing pupmapper via conda will install the pupmapper package and needed software dependencies (Genmap)
+```
+conda install -c bioconda pupmapper
+```
 
 ## Basic usage
 
