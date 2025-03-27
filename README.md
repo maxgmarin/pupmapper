@@ -19,6 +19,7 @@ Pupmapper: A **P**ile**up** **Map**pability Calculato**r**
 - [Installation](#installation)
   - [Install locally](#install-locally)
   - [`pip`](#pip)
+  - [`conda`](#conda)
 - [Basic usage](#basic-usage)
   - [test data set](#analyzing-included-test-data-set)
 - [Full usage](#full-usage)
