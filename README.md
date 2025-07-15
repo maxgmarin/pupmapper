@@ -54,6 +54,25 @@ A pileup mappability score of 1 indicates that all k-mers overlapping with a pos
 You will need to install both the `pupmapper` python package and ensure that the [genmap](https://github.com/cpockrandt/genmap) software is installed (available on your $PATH environmental variable.)
 If conda is used for installation software dependencies are installed automatically. If pupmapper is installed via `pip`, then [genmap](https://github.com/cpockrandt/genmap) and [bigtools]([https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools)) need to be installed independently available on your $PATH environmental variable.).
 
+### `conda`
+Installing pupmapper via conda will install bpoth the pupmapper package and needed software dependencies ([genmap](https://github.com/cpockrandt/genmap) and [bigtools]([https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools)) in one command.
+
+To install pupmapper to your current environment:
+```
+conda install -c bioconda pupmapper
+```
+
+To create a dedicated conda environment with pupmapper installed:
+```
+conda create -n pupmapper_env -c bioconda pupmapper
+```
+
+### `pip`
+pupmapper can be installed via `pip` python package manager.
+```
+pip install pupmapper
+```
+
 ### Install locally
 `pupmapper` can be installed by cloning this repository and installing with `pip`.
 
@@ -65,25 +84,7 @@ cd pupmapper
 pip install . 
 ```
 
-### `pip`
-pupmapper can be installed via `pip` python package manager.
-```
-pip install pupmapper
-```
-
-### `conda`
-Installing pupmapper via conda will install bpoth the pupmapper package and needed software dependencies ([genmap](https://github.com/cpockrandt/genmap) and [bigtools]([https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools)) in one command.
-```
-conda install -c bioconda pupmapper
-```
-
-To create a dedicated conda environment with pupmapper installed:
-```
-conda create -n pupmapper_env -c bioconda pupmapper
-```
-
 ## Basic usage
-
 
 #### 1) `pupmapper all` - Run the full pipeline starting with an input genome
 
@@ -97,7 +98,7 @@ Arguments:
 `-i, --in_genome_fa`: Input genome FASTA file. <br>
 `-o, --outdir`: Directory for output files. <br>
 `-k, --kmer_len`: K-mer length (e.g., 50 bp). <br>
-`-e, --errors`: Number of allowed mismatches in k-mer mapping. <br>
+`-e, --errors`: Number of allowed mismatches (hamming distance) in k-mer mapping step. <br>
 `-g, --gff`: (Optional) Input genome annotations in GFF format. <br>
 `--save-numpy`: (Optional) Save results as compressed numpy arrays. <br>
 
