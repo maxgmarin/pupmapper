@@ -19,6 +19,7 @@ Pupmapper: A **P**ile**up** **Map**pability Calculato**r**
 - [Installation](#installation)
   - [Install locally](#install-locally)
   - [`pip`](#pip)
+  - [`conda`](#conda)
 - [Basic usage](#basic-usage)
   - [test data set](#analyzing-included-test-data-set)
 - [Full usage](#full-usage)
@@ -51,6 +52,26 @@ A pileup mappability score of 1 indicates that all k-mers overlapping with a pos
 ## Installation
 
 You will need to install both the `pupmapper` python package and ensure that the [genmap](https://github.com/cpockrandt/genmap) software is installed (available on your $PATH environmental variable.)
+If conda is used for installation software dependencies are installed automatically. If pupmapper is installed via `pip`, then [genmap](https://github.com/cpockrandt/genmap) and [bigtools]([https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools)) need to be installed independently available on your $PATH environmental variable.).
+
+### `conda`
+Installing pupmapper via conda will install bpoth the pupmapper package and needed software dependencies ([genmap](https://github.com/cpockrandt/genmap) and [bigtools](https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools))) in one command.
+
+To install pupmapper to your current environment:
+```
+conda install -c bioconda pupmapper
+```
+
+To create a dedicated conda environment with pupmapper installed:
+```
+conda create -n pupmapper_env -c bioconda pupmapper
+```
+
+### `pip`
+pupmapper can be installed via `pip` python package manager.
+```
+pip install pupmapper
+```
 
 ### Install locally
 `pupmapper` can be installed by cloning this repository and installing with `pip`.
@@ -63,22 +84,12 @@ cd pupmapper
 pip install . 
 ```
 
-### `pip`
-```
-pip install pupmapper
-```
-
-### `conda`
->🚧 Check back soon 🚧
-
-
 ## Basic usage
 
-
-#### 1) `run_all` - Run the full pipeline starting with an input genome
+#### 1) `pupmapper all` - Run the full pipeline starting with an input genome
 
 ```
-pupmapper run_all -i Input.Genome.fasta -o output_directory/ -k 50 -e 1
+pupmapper all -i Input.Genome.fasta -o output_directory/ -k 50 -e 1
 ```
 The above command will first use genmap to calculate k-mer mappability scores for the input genome and then calculate pileup mappability scores.
 
@@ -87,7 +98,7 @@ Arguments:
 `-i, --in_genome_fa`: Input genome FASTA file. <br>
 `-o, --outdir`: Directory for output files. <br>
 `-k, --kmer_len`: K-mer length (e.g., 50 bp). <br>
-`-e, --errors`: Number of allowed mismatches in k-mer mapping. <br>
+`-e, --errors`: Number of allowed mismatches (hamming distance) in k-mer mapping step. <br>
 `-g, --gff`: (Optional) Input genome annotations in GFF format. <br>
 `--save-numpy`: (Optional) Save results as compressed numpy arrays. <br>
 
@@ -98,14 +109,14 @@ If you wish to run an `pupmapper` on a small test sequence (15 bp), you can run 
 ```
 cd tests/data/Genmap_Ex1/
 
-pupmapper run_all -i Ex1.genome.fasta -o Ex1_OutputDir -k 4 -e 0
+pupmapper all -i Ex1.genome.fasta -o Ex1_OutputDir -k 4 -e 0
 ```
 This command will analyze the pileup mappability of the test sequence with a k-mer size of 4 bp and a max mismatch of 0 (K=4,E=0).
 
 
 ## Full usage
 ```
-pupmapper run_all --help
+pupmapper all --help
 usage: pupmapper run_all [-h] -i IN_GENOME_FA -o OUTDIR -k KMER_LEN -e ERRORS [-g GFF] [--save-numpy]
 
 optional arguments:
