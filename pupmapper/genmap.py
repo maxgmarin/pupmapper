@@ -41,6 +41,7 @@ def get_fasta_basename(fasta_path):
 
 
 def run_genmap_index(fasta_path, index_dir, verbose = False):
+
     cmd = ["genmap", "index", "-F", fasta_path, "-I", index_dir]
     
     if verbose:

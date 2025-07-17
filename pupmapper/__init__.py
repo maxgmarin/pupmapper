@@ -8,6 +8,8 @@ import sys
 import argparse
 import os
 import shutil
+import gzip
+
 from ._version import __version__
 
 from .utils import kmap_bedgraph_to_DF, kmap_DF_To_ArrayDict
@@ -52,7 +54,29 @@ def _genmap_and_pup_cli(args):
         shutil.rmtree(index_dir)
 
 
-    Genome_FA_BaseName = get_fasta_basename(input_Genome_FA)
+    # Handle gzipped FASTA input, decompress input FASTA.GZ if needed
+    if input_Genome_FA.endswith(".gz"):
+        in_fasta_gz = input_Genome_FA
+        tmp_fasta_dir = f"{args.outdir}/tmp_fasta"
+        os.makedirs(tmp_fasta_dir, exist_ok=True)
+
+        print(in_fasta_gz)
+
+        tmp_FA_Basename = get_fasta_basename(in_fasta_gz)
+        decompressed_fasta = os.path.join(tmp_fasta_dir, tmp_FA_Basename)
+
+        print(f"WARNING: The input is FASTA gzipped (GZIP compressed FASTAs are not supported by Genmap).\n To allow the input sequence to be indexed by Genmap a decompressed FASTA will be copied to:\n {decompressed_fasta}\n")
+
+        with gzip.open(in_fasta_gz, "rt") as f_in, open(decompressed_fasta, "w") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+        in_fasta_for_indexing = decompressed_fasta
+
+    else:
+        in_fasta_for_indexing = input_Genome_FA
+
+
+    Genome_FA_BaseName = get_fasta_basename(in_fasta_for_indexing)
 
     if user_prefix:
         output_prefix = user_prefix
@@ -70,31 +94,47 @@ def _genmap_and_pup_cli(args):
     if not is_genmap_available():
         raise EnvironmentError("genmap is not available on the PATH. Please install it or fix your PATH.")
 
+    
     # Check versions of genmap and bigtools
     if verbose:
         print("\nChecking versions of genmap and bigtools:")
-        check_genmap_version()
-        check_bigtools_version()
+
+    check_genmap_version()
+    check_bigtools_version()
+
 
 
     # Step 3: Run Genmap Index step for input genome
     print(f"Step 1: Starting k-mer mappability calculation steps with Genmap\n")
 
-    run_genmap_index(input_Genome_FA,
+    if verbose: print(f" Step 1A - Starting 'genmap index' for input genome sequence.\n")
+
+    run_genmap_index(in_fasta_for_indexing,
                      index_dir)
+    
+    # Remove decompressed FASTA file if it was created
+    if input_Genome_FA.endswith(".gz"): 
+        if verbose: print(f"Removing temporary decompressed FASTA file: {decompressed_fasta}")
+        os.remove(decompressed_fasta)
+
+    if verbose: print(f"Step 1A - Finished 'genmap index' for input genome sequence.\n")
 
     # Step 4: Run Genmap MAP step for genome (after indexing) to calculate k-mer mappability
+
+    if verbose: print(f"Step 1B -- Starting 'genmap map' for k-mer mappability calculation.\n")
 
     run_genmap_map(index_dir,
                    genmap_out_prefix,
                    kmer_length,
                    errors)
-    
 
-    if verbose:
-        print(f"\n   genmap genome index files saved to: {index_dir}")
-        print(f"\n   genmap K-mer mappability files saved to: {kmap_dir}")
-        print("\n")
+    if verbose: print(f"Step 1B -- Finished 'genmap map' for k-mer mappability calculation.\n")
+
+
+
+    print(f"\n   genmap genome index files saved to: {index_dir}")
+    print(f"\n   genmap K-mer mappability files saved to: {kmap_dir}")
+    print("\n")
 
     print(f"Step 1 - Finished\n")
 
@@ -114,13 +154,26 @@ def _genmap_and_pup_cli(args):
     kmer_len = args.kmer_len
 
     ## 5.2) Parse k-mer mappability bedgraph file as Pandas DF
+    if verbose: print("Step 2A: Parsing k-mer mappability .bedgraph file")
+
     Kmap_DF = kmap_bedgraph_to_DF(i_KMap_BG)
 
+    if verbose: print("Step 2A: Finished\n")
+
     ## 3) Convert kmap_DF to dict of numpy arrays of k-mer mappability
+    if verbose: print("Step 2B: Converting k-mer mappability dataframe to numpy arrays")
+
     Kmap_Arrays = kmap_DF_To_ArrayDict(Kmap_DF)
 
+    if verbose: print("Step 2B: Finished")
+
     ## 4) For each chromosome, calculate Pileup Mappability from k-mer mappability
+    if verbose: print("Step 2C: Calculating per-position pileup mappability scores from k-mer mappability scores")
+
     Pmap_Arrays = convert_kmap_to_pmap_arrays(Kmap_Arrays, kmer_len)
+
+    if verbose: print("Step 2C: Finished")
+
 
     ## 5) Output the calculated pileup mappability values as a .bedgraph table
 
@@ -141,21 +194,21 @@ def _genmap_and_pup_cli(args):
 
 
 
-    ######### Calc summary stats #########
+    ######### Calculate summary stats #########
     o_PupMap_PerGenome_Summary_TSV = args.outdir + f"/{output_prefix}.PileupMap.K{kmer_length}_E{errors}.Summary.tsv"
-    o_PupMap_PerChrom_Summary_TSV = args.outdir + f"/{output_prefix}.PileupMap.K{kmer_length}_E{errors}.PerContig.tsv"
+    o_PupMap_PerContig_Summary_TSV = args.outdir + f"/{output_prefix}.PileupMap.K{kmer_length}_E{errors}.PerContig.tsv"
 
     Pmap_Summ_PerGenome_DF = summarize_pileup_map(Pmap_BEDGRAPH_DF, output_prefix, kmer_length, errors)
     Pmap_Summ_PerGenome_DF.to_csv(o_PupMap_PerGenome_Summary_TSV, sep="\t", index = False)
 
 
-    Pmap_Summ_PerChrom_DF = summarize_pileup_map_per_chromosome(Pmap_BEDGRAPH_DF, output_prefix, kmer_length, errors)
-    Pmap_Summ_PerChrom_DF.to_csv(o_PupMap_PerChrom_Summary_TSV, sep="\t", index = False)
+    Pmap_Summ_PerContig_DF = summarize_pileup_map_per_chromosome(Pmap_BEDGRAPH_DF, output_prefix, kmer_length, errors)
+    Pmap_Summ_PerContig_DF.to_csv(o_PupMap_PerContig_Summary_TSV, sep="\t", index = False)
 
     
     if verbose:
-        print(f"\nSummary stats of genome-wide pileup mappability output to: {o_PupMap_Summary_TSV}")
-        print(f"\nSummary stats of per contig pileup mappability output to: {o_PupMap_Summary_TSV}")
+        print(f"\nSummary stats of genome-wide pileup mappability output to: {o_PupMap_PerGenome_Summary_TSV}")
+        print(f"\nSummary stats of per contig pileup mappability output to: {o_PupMap_PerContig_Summary_TSV}")
 
 
     ###########################################################################
@@ -221,10 +274,35 @@ def _genmap_2steps_cli(args):
 
     kmap_dir = args.outdir + "/genmap_kmap_K" + str(kmer_length) + "_E" + str(errors)
 
+    verbose = args.verbose
 
-    FA_BaseName = get_fasta_basename(input_Genome_FA)
+    # Handle gzipped FASTA input, decompress input FASTA.GZ if needed
+    if input_Genome_FA.endswith(".gz"):
+        in_fasta_gz = input_Genome_FA
+        tmp_fasta_dir = f"{args.outdir}/tmp_fasta"
+        os.makedirs(tmp_fasta_dir, exist_ok=True)
 
-    genmap_out_prefix = kmap_dir + "/" + FA_BaseName + ".kmermap." + "K" + str(kmer_length) + "_E" + str(errors)
+        print(in_fasta_gz)
+
+        tmp_FA_Basename = get_fasta_basename(in_fasta_gz)
+        decompressed_fasta = os.path.join(tmp_fasta_dir, tmp_FA_Basename)
+
+        print(f"WARNING: The input is FASTA gzipped (GZIP compressed FASTAs are not supported by Genmap).\n To allow the input sequence to be indexed by Genmap a decompressed FASTA will be copied to\n {decompressed_fasta}")
+
+        with gzip.open(in_fasta_gz, "rt") as f_in, open(decompressed_fasta, "w") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+        in_fasta_for_indexing = decompressed_fasta
+
+    else:
+        in_fasta_for_indexing = input_Genome_FA
+
+
+
+    Genome_FA_BaseName = get_fasta_basename(in_fasta_for_indexing)
+
+
+    genmap_out_prefix = kmap_dir + "/" + Genome_FA_BaseName + ".kmermap." + "K" + str(kmer_length) + "_E" + str(errors)
 
     # Create the target output directory
     os.makedirs(args.outdir, exist_ok=True)
@@ -234,22 +312,46 @@ def _genmap_2steps_cli(args):
     if not is_genmap_available():
         raise EnvironmentError("genmap is not available on the PATH. Please install it or fix your PATH.")
 
-    # Step 3: Run genmap "index" step for input genome
+    # Check versions of genmap and bigtools
+    if verbose:
+        print("\nChecking versions of genmap and bigtools:")
+        check_genmap_version()
+        check_bigtools_version()
 
-    run_genmap_index(input_Genome_FA,
+
+    # Step 3: Run Genmap Index step for input genome
+    print(f"Step 1: Starting k-mer mappability calculation steps with Genmap\n")
+
+    if verbose: print(f" Step 1A - Starting 'genmap index' for input genome sequence.\n")
+
+    run_genmap_index(in_fasta_for_indexing,
                      index_dir)
+    
+    # Remove decompressed FASTA file if it was created
+    if input_Genome_FA.endswith(".gz"): 
+        if verbose: print(f"Removing temporary decompressed FASTA file: {decompressed_fasta}")
+        os.remove(decompressed_fasta)
 
-    # Step 4: Run genmap "map" step for genome (after indexing) to calculate k-mer mappability
+    if verbose: print(f"Step 1A - Finished 'genmap index' for input genome sequence.\n")
+
+    # Step 4: Run Genmap MAP step for genome (after indexing) to calculate k-mer mappability
+
+    if verbose: print(f"Step 1B -- Starting 'genmap map' for k-mer mappability calculation.\n")
 
     run_genmap_map(index_dir,
                    genmap_out_prefix,
                    kmer_length,
                    errors)
-    
-    print(f"Genmap processing completed.\nOutput files saved to: {args.outdir}")
-    print(f"Indexed genome files saved to: {index_dir}")
-    print(f"K-mer mappability files saved to: {kmap_dir}")
-    print("")
+
+    if verbose: print(f"Step 1B -- Finished 'genmap map' for k-mer mappability calculation.\n")
+
+
+    print(f"\n   genmap genome index files saved to: {index_dir}")
+    print(f"\n   genmap K-mer mappability files saved to: {kmap_dir}")
+    print("\n")
+
+    print(f"Step 1 - Finished\n")
+
 
 
 
@@ -323,7 +425,7 @@ def main():
                                   help="k-mer length (bp) used to generate the k-mer mappability values")
     
     run_genmap_and_pup_parser.add_argument('-e', '--errors',type=int, required=True,
-                                  help="Number of errors (mismatches) allowed in Genmap's k-mer mappability calculation")
+                                  help="Number of allowed mismatches (hamming distance) in k-mer mapping step.")
     
     run_genmap_and_pup_parser.add_argument('-g', '--gff', type=str, required=False,
                                   help="GFF formatted genome annotations for input genome (.gff) (Optional)")
@@ -357,8 +459,12 @@ def main():
                                   help="k-mer length (bp) used to generate the k-mer mappability values")
     
     run_genmap_parser.add_argument('-e', '--errors',type=int, required=True,
-                                  help="Number of errors (mismatches) allowed in Genmap's k-mer mappability calculation")
+                                  help="Number of allowed mismatches (hamming distance) in k-mer mapping step.")
+
+    run_genmap_parser.add_argument('--verbose', action='store_true', required=False,
+                                  help="Output additional messages during processing. Useful for troubleshooting.")
     
+
     run_genmap_parser.set_defaults(func=_genmap_2steps_cli)
 
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-
-import pandas as pd
-import numpy as np
 import os
-from tqdm import tqdm
+import gzip
+import numpy as np
+import pandas as pd
 import bioframe as bf
+from tqdm import tqdm
 
 
 def kmap_bedgraph_to_DF(in_bedgraph_PATH):
@@ -291,7 +291,12 @@ def calc_pupmap_per_annotated_feature(Pmap_Arrays, input_GFF_PATH):
     Feat_DF = parse_gff3_with_pandas(input_GFF_PATH)
     Feat_DF.rename(columns={'seqname': 'chrom'}, inplace=True)
 
-    # Step 2: 
+
+    # Step 2: Filter dataframe of GFF for features on analyzed chromosomes (SequenceIDs)
+
+    Feat_DF = Feat_DF[Feat_DF["chrom"].isin(Pmap_Arrays.keys())]
+
+    # Step 3: Calculate mean Pileup mappability score for each feature
 
     Region_PmapScores = []
 
@@ -316,3 +321,29 @@ def calc_pupmap_per_annotated_feature(Pmap_Arrays, input_GFF_PATH):
 
 
 
+def PileupMappability_bedgraph_to_DF(in_bedgraph_PATH):
+    """ """
+    i_PupMap_DF = pd.read_csv(in_bedgraph_PATH, sep = "\t", header=None)
+    i_PupMap_DF.columns = ("chrom", "start", "end", "PupMap")
+
+    return i_PupMap_DF
+
+def parse_3column_BED_to_DF(in_bed_PATH):
+    """ """
+    BED_DF = pd.read_csv(in_bed_PATH, sep = "\t", header=None)
+    BED_DF.columns = ("chrom", "start", "end")
+
+    return BED_DF
+
+
+def convert_gz_to_txt(gzipped_file, output_file):
+    """
+    Converts a gzipped file to a plain text file
+    
+    Parameters:
+        gzipped_file (str): Path to the input gzipped file.
+        output_file (str): Path to the output plain text file.
+    """
+    with gzip.open(gzipped_file, 'rt') as gz_file, open(output_file, 'w') as txt_file:
+        for line in gz_file:
+            txt_file.write(line)
