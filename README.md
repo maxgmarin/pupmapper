@@ -55,7 +55,7 @@ You will need to install both the `pupmapper` python package and ensure that the
 If conda is used for installation software dependencies are installed automatically. If pupmapper is installed via `pip`, then [genmap](https://github.com/cpockrandt/genmap) and [bigtools]([https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools)) need to be installed independently available on your $PATH environmental variable.).
 
 ### `conda`
-Installing pupmapper via conda will install bpoth the pupmapper package and needed software dependencies ([genmap](https://github.com/cpockrandt/genmap) and [bigtools](https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools))) in one command.
+Installing pupmapper via conda will install both the pupmapper package and needed software dependencies ([genmap](https://github.com/cpockrandt/genmap) and [bigtools](https://github.com/cpockrandt/genmap](https://github.com/jackh726/bigtools))) in one command.
 
 To install pupmapper to your current environment:
 ```
