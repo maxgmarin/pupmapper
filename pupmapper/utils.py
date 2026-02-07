@@ -388,7 +388,7 @@ def calc_pupmap_per_annotated_feature(Pmap_Arrays, input_GFF_PATH):
     Region_Stats = []
 
     # Iterate over DataFrame rows
-    for index, row in Feat_DF.iterrows():
+    for index, row in tqdm(Feat_DF.iterrows()):
         i_chrom = row['chrom']
         i_start_0idx = row['start'] - 1
         i_end = row['end']

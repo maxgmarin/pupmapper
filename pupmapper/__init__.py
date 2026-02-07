@@ -46,13 +46,26 @@ def _genmap_and_pup_cli(args):
     index_dir = args.outdir + "/genmap_index"
     kmap_dir = args.outdir + "/genmap_kmap_K" + str(kmer_length) + "_E" + str(errors)
     
-    # Check if output directory already exists
-    if os.path.exists(index_dir):
-        if verbose:
-            print("WARNING: Output sub-directory for 'genmap index' step already exists in target output directory.")
-            print("The existing directory is going to be delete before running the 'genmap index' step.")
-        shutil.rmtree(index_dir)
-
+    # Print analysis startup message and parameter summary
+    print("=" * 70)
+    print(" Running Pupmapper Analysis")
+    print("="*70)
+    print("\n--- Input Files ---")
+    print(f"Input genome: {input_Genome_FA}")
+    
+    if input_Genome_GFF:
+        print(f"Input annotation file: {input_Genome_GFF}")
+    else:
+        print("Input annotation file: None provided")
+    
+    print(f"\n--- Mappability Parameters ---")
+    print(f"K-mer length (K): {kmer_length} bp")
+    print(f"Edit distance threshold (E): {errors}")
+    
+    print(f"\n--- Output Directory ---")
+    print(f"Target output directory: {args.outdir}")
+    print("="*70 + "\n")
+    
 
     # Handle gzipped FASTA input, decompress input FASTA.GZ if needed
     if input_Genome_FA.endswith(".gz"):
@@ -107,6 +120,13 @@ def _genmap_and_pup_cli(args):
 
     if verbose: print(f" Step 1A - Starting 'genmap index' for input genome sequence.\n")
 
+    # Check if output directory for 'genmap index' already exists
+    if os.path.exists(index_dir):
+        if verbose:
+            print(" WARNING: Output sub-directory for 'genmap index' step already exists in target output directory.")
+            print(" The existing directory is going to be deleted before running the 'genmap index' step.")
+        shutil.rmtree(index_dir)
+
     run_genmap_index(in_fasta_for_indexing,
                      index_dir)
     
@@ -115,18 +135,18 @@ def _genmap_and_pup_cli(args):
         if verbose: print(f"Removing temporary decompressed FASTA file: {decompressed_fasta}")
         os.remove(decompressed_fasta)
 
-    if verbose: print(f"Step 1A - Finished 'genmap index' for input genome sequence.\n")
+    if verbose: print(f" Step 1A - Finished 'genmap index' for input genome sequence.\n")
 
     # Step 4: Run Genmap MAP step for genome (after indexing) to calculate k-mer mappability
 
-    if verbose: print(f"Step 1B -- Starting 'genmap map' for k-mer mappability calculation.\n")
+    if verbose: print(f" Step 1B -- Starting 'genmap map' for k-mer mappability calculation.\n")
 
     run_genmap_map(index_dir,
                    genmap_out_prefix,
                    kmer_length,
                    errors)
 
-    if verbose: print(f"Step 1B -- Finished 'genmap map' for k-mer mappability calculation.\n")
+    if verbose: print(f" Step 1B -- Finished 'genmap map' for k-mer mappability calculation.\n")
 
 
 
@@ -152,25 +172,25 @@ def _genmap_and_pup_cli(args):
     kmer_len = args.kmer_len
 
     ## 5.2) Parse k-mer mappability bedgraph file as Pandas DF
-    if verbose: print("Step 2A: Parsing k-mer mappability .bedgraph file")
+    if verbose: print(" Step 2A: Parsing k-mer mappability .bedgraph file")
 
     Kmap_DF = kmap_bedgraph_to_DF(i_KMap_BG)
 
-    if verbose: print("Step 2A: Finished\n")
+    if verbose: print(" Step 2A: Finished\n")
 
     ## 3) Convert kmap_DF to dict of numpy arrays of k-mer mappability
-    if verbose: print("Step 2B: Converting k-mer mappability dataframe to numpy arrays")
+    if verbose: print(" Step 2B: Converting k-mer mappability dataframe to numpy arrays")
 
     Kmap_Arrays = kmap_DF_To_ArrayDict(Kmap_DF)
 
-    if verbose: print("Step 2B: Finished")
+    if verbose: print(" Step 2B: Finished")
 
     ## 4) For each chromosome, calculate Pileup Mappability from k-mer mappability
-    if verbose: print("Step 2C: Calculating per-position pileup mappability scores from k-mer mappability scores")
+    if verbose: print(" Step 2C: Calculating per-position pileup mappability scores from k-mer mappability scores")
 
     Pmap_Arrays = convert_kmap_to_pmap_arrays(Kmap_Arrays, kmer_len)
 
-    if verbose: print("Step 2C: Finished")
+    if verbose: print(" Step 2C: Finished")
 
 
     ## 5) Output the calculated pileup mappability values as a .bedgraph table
@@ -329,18 +349,18 @@ def _genmap_2steps_cli(args):
         if verbose: print(f"Removing temporary decompressed FASTA file: {decompressed_fasta}")
         os.remove(decompressed_fasta)
 
-    if verbose: print(f"Step 1A - Finished 'genmap index' for input genome sequence.\n")
+    if verbose: print(f" Step 1A - Finished 'genmap index' for input genome sequence.\n")
 
     # Step 4: Run Genmap MAP step for genome (after indexing) to calculate k-mer mappability
 
-    if verbose: print(f"Step 1B -- Starting 'genmap map' for k-mer mappability calculation.\n")
+    if verbose: print(f" Step 1B -- Starting 'genmap map' for k-mer mappability calculation.\n")
 
     run_genmap_map(index_dir,
                    genmap_out_prefix,
                    kmer_length,
                    errors)
 
-    if verbose: print(f"Step 1B -- Finished 'genmap map' for k-mer mappability calculation.\n")
+    if verbose: print(f" Step 1B -- Finished 'genmap map' for k-mer mappability calculation.\n")
 
 
     print(f"\n   genmap genome index files saved to: {index_dir}")
