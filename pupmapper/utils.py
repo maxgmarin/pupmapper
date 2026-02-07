@@ -46,7 +46,7 @@ def kmap_bedgraph_to_DFandArray(kmap_bedgraph_PATH):
     return Kmap_DF, Kmap_Arrays
 
 
-def compute_pmap(kmap_array, k_size):
+def compute_pmap_naive(kmap_array, k_size):
     """ """
     # This list comprehension will iterate over all windows of the array and calculate the mean kmer mappability within that window
     pmap_Array = np.array([ np.mean(kmap_array[e - (k_size): e ]) for e in np.arange(k_size, len(kmap_array) + 1 ) ])
@@ -63,6 +63,56 @@ def compute_pmap(kmap_array, k_size):
                                          pmap_last_positions) )
 
     return pmap_Array_Final
+
+
+
+def compute_pmap(kmap_array, k_size):
+    """Compute pileup mappability using a cumulative-sum rolling mean.
+
+    Edge handling matches the original behavior:
+    - First `k_size-1` positions are the mean of the first 1..k_size-1 bases.
+    - Middle positions are the mean over full windows of size `k_size`.
+    - Last `k_size-1` positions are filled with the last k-mer mappability value.
+
+    Parameters
+    ----------
+    kmap_array : array-like
+        1D array of k-mer mappability scores.
+    k_size : int
+        Window size (k). Must be a positive integer (>= 1).
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of pileup mappability values with the same length as `kmap_array`.
+
+    Raises
+    ------
+    ValueError
+        If `k_size` is not a positive integer.
+    """
+    # Validate k_size
+    if not isinstance(k_size, int) or k_size < 1:
+        raise ValueError("k_size must be a positive integer (>=1)")
+
+
+    # Cumulative-sum trick to compute rolling sums efficiently
+    kmap_csum = np.concatenate(([0.0], np.cumsum(kmap_array, dtype=float)))
+    pmap_Array_Rolling = (kmap_csum[k_size:] - kmap_csum[:-k_size]) / float(k_size)
+
+    # The window size is k_size, so the first elements will be the mean of the first k_size elements
+    pmap_first_positions = np.array([np.mean(kmap_array[: f]) for f in np.arange(1, k_size)])
+
+    # The last k positions will have the same pileup mappability value as the last kmer mappability value
+    last_k_mappability_value = kmap_array[-1]
+    pmap_last_positions = np.full((k_size - 1,), last_k_mappability_value) # Length is k -1
+
+    return np.concatenate((pmap_first_positions,
+                           pmap_Array_Rolling,
+                           pmap_last_positions))
+
+
+
 
 
 def convert_kmap_to_pmap_arrays(Kmap_Arrays, k_size):
@@ -260,23 +310,60 @@ def summarize_pileup_map_per_chromosome(i_Pmap_DF, genome_name, k, e):
 
 
 
-#### Functions to calculate average pileup mappability across regions of interest (ie genes) ####
+#### Functions to calculate average pileup mappability across features of interest (ie genes) ####
+
+
+def parse_attributes(attr_field):
+    """Parse GFF3/GTF attributes field into a dictionary.
+    
+    Args:
+        attr_field: The attributes field from GFF3/GTF format
+        
+    Returns:
+        Dictionary of attribute key-value pairs
+    """
+    attrs = {}
+    s = attr_field.strip().strip(";")
+    if not s:
+        return attrs
+    for item in s.split(";"):
+        item = item.strip()
+        if not item:
+            continue
+        if "=" in item:  # GFF3
+            k, v = item.split("=", 1)
+            attrs[k.strip()] = v.strip().strip('"')
+        elif " " in item:  # GTF
+            k, v = item.split(" ", 1)
+            attrs[k.strip()] = v.strip().strip('"')
+    return attrs
+
+# Parse attributes and extract gene attribute
+def extract_gene_attr(attr_field):
+    attrs = parse_attributes(attr_field)
+    return attrs.get('gene', 'None') # Default to "None" if 'gene' attribute is not found
+
+# Extract locus_tag attribute
+def extract_locus_tag_attr(attr_field):
+    attrs = parse_attributes(attr_field)
+    return attrs.get('locus_tag', 'None')
 
 
 def parse_gff3_with_pandas(file_path):
     # Define column names based on the GFF3 format
-    column_names = [
-        "seqname", "source", "feature", "start", "end", "score", "strand", "frame", "attributes"
-    ]
+    column_names = ["seqname", "source", "feature", "start",
+                    "end", "score", "strand",
+                    "frame", "attributes"]
     
-    # Use pandas to read the file, skip lines starting with '#' (comments), and use tab as the delimiter
-    df = pd.read_csv(
-        file_path, 
-        sep='\t', 
-        comment='#',  # Ignores lines that start with '#'
+    # Use pandas to read the GFF file, skip lines starting with '#' (comments)
+    df = pd.read_csv(file_path, sep='\t', 
+        comment='#',
         names=column_names,
-        header=None  # No header in GFF files
+        header=None 
     )
+    
+    df['attr_gene'] = df['attributes'].apply(extract_gene_attr)
+    df['attr_locus_tag'] = df['attributes'].apply(extract_locus_tag_attr)
 
     return df
 
@@ -296,9 +383,9 @@ def calc_pupmap_per_annotated_feature(Pmap_Arrays, input_GFF_PATH):
 
     Feat_DF = Feat_DF[Feat_DF["chrom"].isin(Pmap_Arrays.keys())]
 
-    # Step 3: Calculate mean Pileup mappability score for each feature
+    # Step 3: Calculate Pileup mappability statistics for each feature
 
-    Region_PmapScores = []
+    Region_Stats = []
 
     # Iterate over DataFrame rows
     for index, row in Feat_DF.iterrows():
@@ -306,16 +393,42 @@ def calc_pupmap_per_annotated_feature(Pmap_Arrays, input_GFF_PATH):
         i_start_0idx = row['start'] - 1
         i_end = row['end']
 
-
         # Subset the numpy array for the given genomic region
         subset_Pmap_Scores = Pmap_Arrays[i_chrom][i_start_0idx:i_end]
 
-        # Calculate the average of the subset values
-        mean_Pmap = np.mean(subset_Pmap_Scores)
+        # Skip features with total_length less than 1
+        total_length = len(subset_Pmap_Scores)
+        if total_length < 1:
+            continue
 
-        Region_PmapScores.append(mean_Pmap)
+        # Calculate statistics for the subset of pupmap values
+        mean_Pmap = np.mean(subset_Pmap_Scores)
+        median_Pmap = np.median(subset_Pmap_Scores)
+        
+        # Calculate fraction below various thresholds
+        frac_below1 = np.sum(subset_Pmap_Scores < 1) / total_length 
+        frac_below09 = np.sum(subset_Pmap_Scores < 0.9) / total_length 
+        frac_below08 = np.sum(subset_Pmap_Scores < 0.8) / total_length 
+        frac_below07 = np.sum(subset_Pmap_Scores < 0.7) / total_length 
+        frac_below06 = np.sum(subset_Pmap_Scores < 0.6) / total_length 
+        frac_below05 = np.sum(subset_Pmap_Scores < 0.5) / total_length 
+        frac_below025 = np.sum(subset_Pmap_Scores < 0.25) / total_length
+
+        Region_Stats.append({
+            'Mean_PupMap': mean_Pmap,
+            'Median_PupMap': median_Pmap,
+            'Frac_Below1': frac_below1,
+            'Frac_Below0.9': frac_below09,
+            'Frac_Below0.8': frac_below08,
+            'Frac_Below0.7': frac_below07,
+            'Frac_Below0.6': frac_below06,
+            'Frac_Below0.5': frac_below05,
+            'Frac_Below0.25': frac_below025
+        })
     
-    Feat_DF["Mean_PupMap"] = Region_PmapScores
+    # Create a dataframe from the list of dictionaries and concatenate with original feature dataframe
+    stats_df = pd.DataFrame(Region_Stats)
+    Feat_DF = pd.concat([Feat_DF.reset_index(drop=True), stats_df], axis=1)
 
     return Feat_DF
 

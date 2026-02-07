@@ -12,7 +12,9 @@ def is_genmap_available():
 def check_genmap_version():
     try:
         result = subprocess.run(['genmap', '--version'], capture_output=True, text=True, check=True)
-        print(f"genmap version:\n{result.stdout}")
+        #print(f"genmap version:\n{result.stdout}")
+        print(f"{result.stdout}")
+
     except subprocess.CalledProcessError as e:
         print(f"Error checking genmap version:\n{e.stderr}")
 
@@ -76,3 +78,4 @@ def run_genmap_map(index_dir, kmap_out_prefix, k_length, errors, threads=1, verb
     else:
         if verbose:
             print(f"genmap map completed successfully.\n")
+

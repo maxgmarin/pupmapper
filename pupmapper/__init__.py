@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-### Authors: Max Marin (maximillian_marin@hms.harvard.edu)
+### Author: Max Marin (maximillian_marin@hms.harvard.edu)
 # Pupmapper: A tool for converting k-mer mappability to pileup mappability
 
 
@@ -65,7 +65,7 @@ def _genmap_and_pup_cli(args):
         tmp_FA_Basename = get_fasta_basename(in_fasta_gz)
         decompressed_fasta = os.path.join(tmp_fasta_dir, tmp_FA_Basename)
 
-        print(f"WARNING: The input is FASTA gzipped (GZIP compressed FASTAs are not supported by Genmap).\n To allow the input sequence to be indexed by Genmap a decompressed FASTA will be copied to:\n {decompressed_fasta}\n")
+        print(f"WARNING: The input FASTA is gzipped (GZIP compressed FASTAs are not supported by Genmap).\n To allow the input sequence to be indexed by Genmap a decompressed FASTA will be copied to:\n {decompressed_fasta}\n")
 
         with gzip.open(in_fasta_gz, "rt") as f_in, open(decompressed_fasta, "w") as f_out:
             shutil.copyfileobj(f_in, f_out)
@@ -96,9 +96,7 @@ def _genmap_and_pup_cli(args):
 
     
     # Check versions of genmap and bigtools
-    if verbose:
-        print("\nChecking versions of genmap and bigtools:")
-
+    print("\nChecking versions of software dependencies:")
     check_genmap_version()
     check_bigtools_version()
 
@@ -234,7 +232,7 @@ def _genmap_and_pup_cli(args):
         PupMap_PerFeature_DF = calc_pupmap_per_annotated_feature(Pmap_Arrays,
                                                     input_Genome_GFF)
 
-        o_Features_Wi_MeanPupmap_TSV = args.outdir + f"/{output_prefix}.PerFeature.MeanPileupMap.K{kmer_length}_E{errors}.tsv"
+        o_Features_Wi_MeanPupmap_TSV = args.outdir + f"/{output_prefix}.PerFeature.PileupMapStats.K{kmer_length}_E{errors}.tsv.gz"
 
         PupMap_PerFeature_DF.to_csv(o_Features_Wi_MeanPupmap_TSV, 
                                     sep = "\t", index = False)
@@ -313,10 +311,9 @@ def _genmap_2steps_cli(args):
         raise EnvironmentError("genmap is not available on the PATH. Please install it or fix your PATH.")
 
     # Check versions of genmap and bigtools
-    if verbose:
-        print("\nChecking versions of genmap and bigtools:")
-        check_genmap_version()
-        check_bigtools_version()
+    print("\nChecking versions of software dependencies:")
+    check_genmap_version()
+    check_bigtools_version()
 
 
     # Step 3: Run Genmap Index step for input genome
@@ -358,32 +355,6 @@ def _genmap_2steps_cli(args):
 
 
 def main():
-
-    ascii_art = r"""
-  _____             __  __                             
- |  __ \           |  \/  |                            
- | |__) |   _ _ __ | \  / | __ _ _ __  _ __   ___ _ __ 
- |  ___/ | | | '_ \| |\/| |/ _` | '_ \| '_ \ / _ \ '__|
- | |   | |_| | |_) | |  | | (_| | |_) | |_) |  __/ |   
- |_|    \__,_| .__/|_|  |_|\__,_| .__/| .__/ \___|_|   
-             | |                | |   | |              
-             |_|                |_|   |_|              
-    """
-
-    pm_ascii_o1 = r"""
-                  .--~~,__
-     :-....,-------`~~'._.' 
-     `-,,,  ,_      ;'~U' 
-      _,-' ,'`-__; '--.   
-     (_/'~~      ''''(;  
- ╔═╗┬ ┬┌─┐╔╦╗┌─┐┌─┐┌─┐┌─┐┬─┐  
- ╠═╝│ │├─┘║║║├─┤├─┘├─┘├┤ ├┬┘  
- ╩  └─┘┴  ╩ ╩┴ ┴┴  ┴  └─┘┴└─  
-. .-.   .-. .-.   .-. .-.   .
-|\|||\ /|||\|||\ /|||\|||\ /|
-/ \|||\|||/ \|||\|||/ \|||\||
-   `-~ `-`   `-~ `-`   `-~ `-
-    """
 
     pm_ascii_o2 = r"""
 -------------------------------------------------------------------------
@@ -447,7 +418,7 @@ def main():
 
 
     # 2) Create parser for running Genmap Index + Map steps
-    run_genmap_parser = sub_parser_1.add_parser("genmap", help="Wrapper command for running Genmap processing on input FASTA (2 Steps, indexing + k-mer mappability calculation.")
+    run_genmap_parser = sub_parser_1.add_parser("genmap", help="Wrapper command for running Genmap processing on input FASTA (2 Steps, indexing + k-mer mappability calculation).")
 
     run_genmap_parser.add_argument('-i', '--in_genome_fa', type=str, required=True,
                                   help="Input genome fasta file (.fasta)")

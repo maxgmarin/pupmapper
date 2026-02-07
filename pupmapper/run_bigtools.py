@@ -12,7 +12,8 @@ def is_bigtools_available():
 def check_bigtools_version():
     try:
         result = subprocess.run(['bigtools', '--version'], capture_output=True, text=True, check=True)
-        print(f"bigtools version:\n{result.stdout}")
+#        print(f"bigtools version:\n{result.stdout}")
+        print(f"{result.stdout}")
     except subprocess.CalledProcessError as e:
         print(f"Error checking bigtools version:\n{e.stderr}")
 
